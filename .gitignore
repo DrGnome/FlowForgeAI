@@ -1,0 +1,24 @@
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# IDE settings
+.vs/
+.vscode/*
+!.vscode/extensions.json
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Local.json
+**/appsettings.Development.json
+
+# Test and coverage output
+TestResults/
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
