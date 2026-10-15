@@ -1,9 +1,14 @@
 
 using FlowForge.Application;
+using FlowForge.Application.Workflows;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<WorkflowRunner>();
+builder.Services.AddTransient<IWorkflowStep, ValidateGoalStep>();
+builder.Services.AddTransient<IWorkflowStep, PrepareAnalysisStep>();
+builder.Services.AddTransient<IWorkflowStep, GenerateResultStep>();
+
+builder.Services.AddTransient<WorkflowRunner>();
 
 var app = builder.Build();
 
