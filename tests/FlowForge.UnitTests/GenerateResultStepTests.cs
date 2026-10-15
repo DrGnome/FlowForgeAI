@@ -1,40 +1,63 @@
-
+using System.Text.Json;
 using FlowForge.Application.AI;
 using FlowForge.Application.Workflows;
+using FlowForge.Domain;
 
 namespace FlowForge.UnitTests;
 
 public class GenerateResultStepTests
 {
     [Fact]
-    public async Task ExecuteAsync_UsesAiService()
+    public async Task ExecuteAsync_ReturnsSerializedAnalysis()
     {
-        var fakeAi = new FakeAiService();
-        var step = new GenerateResultStep(fakeAi);
+        var expected = new AnalysisResult(
+            "A concise summary",
+            ["Finding one"],
+            ["Caveat one"]);
 
-        var result = await step.ExecuteAsync(
-            "Summarise a document");
+        var step = new GenerateResultStep(
+            new FakeAiService(expected));
 
-        Assert.Equal(
-            "Fake analysis result",
-            result);
+        var output = await step.ExecuteAsync("Analyse a document");
 
-        Assert.Equal(
-            "Summarise a document",
-            fakeAi.ReceivedGoal);
+        var actual = JsonSerializer.Deserialize<AnalysisResult>(
+            output,
+            new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+        Assert.NotNull(actual);
+        Assert.Equal(expected.Summary, actual.Summary);
+        Assert.Equal(expected.KeyFindings, actual.KeyFindings);
+        Assert.Equal(expected.Caveats, actual.Caveats);
     }
 
-    private sealed class FakeAiService : IAiService
+    [Fact]
+    public async Task ExecuteAsync_ForwardsCancellationToken()
     {
-        public string? ReceivedGoal { get; private set; }
+        using var cts = new CancellationTokenSource();
+        var fake = new FakeAiService(
+            new AnalysisResult("Summary", [], []));
 
-        public Task<string> AnalyzeAsync(
+        var step = new GenerateResultStep(fake);
+
+        await step.ExecuteAsync("Analyse", cts.Token);
+
+        Assert.Equal(cts.Token, fake.ReceivedToken);
+    }
+
+    private sealed class FakeAiService(
+        AnalysisResult result) : IAiService
+    {
+        public CancellationToken ReceivedToken { get; private set; }
+
+        public Task<AnalysisResult> AnalyzeAsync(
             string goal,
             CancellationToken cancellationToken = default)
         {
-            ReceivedGoal = goal;
-
-            return Task.FromResult("Fake analysis result");
+            ReceivedToken = cancellationToken;
+            return Task.FromResult(result);
         }
     }
 }

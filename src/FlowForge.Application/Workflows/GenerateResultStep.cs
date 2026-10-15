@@ -1,4 +1,3 @@
-
 using FlowForge.Application.AI;
 
 namespace FlowForge.Application.Workflows;
@@ -14,12 +13,14 @@ public sealed class GenerateResultStep : IWorkflowStep
 
     public string Name => "Generate result";
 
-    public Task<string> ExecuteAsync(
+    public async Task<string> ExecuteAsync(
         string goal,
         CancellationToken cancellationToken = default)
     {
-        return _aiService.AnalyzeAsync(
+        var result = await _aiService.AnalyzeAsync(
             goal,
             cancellationToken);
+
+        return System.Text.Json.JsonSerializer.Serialize(result);
     }
 }

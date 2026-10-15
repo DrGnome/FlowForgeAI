@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowForge.Domain\FlowForge.Domain.csproj" />
     <ProjectReference Include="..\..\src\FlowForge.Application\FlowForge.Application.csproj" />
+    <ProjectReference Include="..\..\src\FlowForge.Infrastructure\FlowForge.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
