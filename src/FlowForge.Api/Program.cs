@@ -5,19 +5,38 @@ using FlowForge.Application;
 using FlowForge.Application.Workflows;
 using FlowForge.Application.AI;
 using FlowForge.Infrastructure.AI;
+using FlowForge.Application.WorkflowHistory;
+using FlowForge.Infrastructure.WorkflowHistory;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
-    .Configure<AiOptions>(
-        builder.Configuration.GetSection("Ai"));
+    .AddOptions<AiOptions>()
+    .Bind(builder.Configuration.GetSection(AiOptions.SectionName))
+    .ValidateDataAnnotations()
+    .Validate(
+        options => Uri.TryCreate(
+            options.BaseUrl,
+            UriKind.Absolute,
+            out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp
+                || uri.Scheme == Uri.UriSchemeHttps),
+        "Ai:BaseUrl must be an absolute HTTP or HTTPS URL.")
+    .ValidateOnStart();
 
-builder.Services.AddHttpClient<IAiService, OllamaAiService>();
+builder.Services.AddHttpClient<IAiService, OllamaAiService>(
+    client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(90);
+    });
 builder.Services.AddHttpClient<IAiHealthCheck, OllamaHealthCheck>();
 
 builder.Services.AddTransient<IWorkflowStep, ValidateGoalStep>();
 builder.Services.AddTransient<IWorkflowStep, PrepareAnalysisStep>();
 builder.Services.AddTransient<IWorkflowStep, GenerateResultStep>();
+builder.Services.AddSingleton<
+    IWorkflowRunRepository,
+    InMemoryWorkflowRunRepository>();
 
 builder.Services.AddTransient<WorkflowRunner>();
 
@@ -98,6 +117,22 @@ app.MapGet("/health", async (
         ? Results.Ok(response)
         : Results.Json(response, statusCode: 503);
 });
+
+
+app.MapGet("/workflows/{id:guid}", async (
+    Guid id,
+    IWorkflowRunRepository repository,
+    CancellationToken cancellationToken) =>
+{
+    var workflowRun = await repository.GetByIdAsync(
+        id,
+        cancellationToken);
+
+    return workflowRun is null
+        ? Results.NotFound(new { error = "Workflow run not found." })
+        : Results.Ok(workflowRun);
+});
+
 
 app.Run();
 
