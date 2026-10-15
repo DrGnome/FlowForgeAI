@@ -19,13 +19,18 @@ public sealed class WorkflowRunner
     {
         var startedAt = DateTimeOffset.UtcNow;
         var results = new List<WorkflowStepResult>();
+        var status = "Succeeded";
 
-        try
+        foreach (var step in _steps)
         {
-            foreach (var step in _steps)
+            if (cancellationToken.IsCancellationRequested)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                status = "Cancelled";
+                break;
+            }
 
+            try
+            {
                 var output = await step.ExecuteAsync(
                     goal,
                     cancellationToken);
@@ -36,20 +41,37 @@ public sealed class WorkflowRunner
                     output,
                     DateTimeOffset.UtcNow));
             }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                results.Add(new WorkflowStepResult(
+                    step.Name,
+                    "Cancelled",
+                    "Step execution was cancelled.",
+                    DateTimeOffset.UtcNow));
 
-            return new WorkflowRun(
-                Guid.NewGuid(),
-                goal,
-                "Succeeded",
-                startedAt,
-                DateTimeOffset.UtcNow,
-                results);
+                status = "Cancelled";
+                break;
+            }
+            catch (Exception)
+            {
+                results.Add(new WorkflowStepResult(
+                    step.Name,
+                    "Failed",
+                    "Step execution failed. See application logs for details.",
+                    DateTimeOffset.UtcNow));
+
+                status = "Failed";
+                break;
+            }
         }
-        catch
-        {
-            // Preserve the exception so the API can report the failure.
-            // Failure-state recording will be added next.
-            throw;
-        }
+
+        return new WorkflowRun(
+            Guid.NewGuid(),
+            goal,
+            status,
+            startedAt,
+            DateTimeOffset.UtcNow,
+            results);
     }
 }
