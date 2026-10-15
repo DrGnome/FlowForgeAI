@@ -1,8 +1,19 @@
 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using FlowForge.Infrastructure;
 using FlowForge.Application;
 using FlowForge.Application.Workflows;
+using FlowForge.Application.AI;
+using FlowForge.Infrastructure.AI;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services
+    .Configure<AiOptions>(
+        builder.Configuration.GetSection("Ai"));
+
+builder.Services.AddHttpClient<IAiService, OllamaAiService>();
 
 builder.Services.AddTransient<IWorkflowStep, ValidateGoalStep>();
 builder.Services.AddTransient<IWorkflowStep, PrepareAnalysisStep>();
