@@ -57,7 +57,7 @@ app.MapPost("/workflows/run", async (
 }
 
     var result = await runner.RunAsync(
-        request.Goal,
+        new WorkflowInput(request.Goal, request.DocumentText),
         cancellationToken);
 
     if (result.Status == "Failed")
@@ -73,6 +73,8 @@ app.MapPost("/workflows/run", async (
 
 app.Run();
 
-public sealed record RunWorkflowRequest(string Goal);
+public sealed record RunWorkflowRequest(
+    string Goal,
+    string DocumentText);
 
 public partial class Program { }

@@ -20,7 +20,11 @@ public sealed class WorkflowApiTests
 
         var response = await client.PostAsJsonAsync(
             "/workflows/run",
-            new { goal = "Analyse a document" });
+            new
+            {
+                goal = "Analyse a document",
+                documentText = "Document contents"
+            });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -33,7 +37,7 @@ public sealed class WorkflowApiTests
 
         var response = await client.PostAsJsonAsync(
             "/workflows/run",
-            new { goal = "" });
+            new { goal = "", documentText = "Document contents" });
 
         Assert.Equal(
             HttpStatusCode.BadRequest,
@@ -50,7 +54,11 @@ public sealed class WorkflowApiTests
 
         var response = await client.PostAsJsonAsync(
             "/workflows/run",
-            new { goal = "Analyse a document" });
+            new
+            {
+                goal = "Analyse a document",
+                documentText = "Document contents"
+            });
 
         Assert.Equal(
             HttpStatusCode.BadGateway,
@@ -84,6 +92,7 @@ public sealed class WorkflowApiTests
     {
         public Task<AnalysisResult> AnalyzeAsync(
             string goal,
+            string documentText,
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

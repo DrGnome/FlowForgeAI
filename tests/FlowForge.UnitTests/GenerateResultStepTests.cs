@@ -18,7 +18,10 @@ public class GenerateResultStepTests
         var step = new GenerateResultStep(
             new FakeAiService(expected));
 
-        var output = await step.ExecuteAsync("Analyse a document");
+        var output = await step.ExecuteAsync(
+            new WorkflowInput(
+                "Analyse a document",
+                "Document contents"));
 
         var actual = JsonSerializer.Deserialize<AnalysisResult>(
             output,
@@ -42,7 +45,9 @@ public class GenerateResultStepTests
 
         var step = new GenerateResultStep(fake);
 
-        await step.ExecuteAsync("Analyse", cts.Token);
+        await step.ExecuteAsync(
+            new WorkflowInput("Analyse", "Document contents"),
+            cts.Token);
 
         Assert.Equal(cts.Token, fake.ReceivedToken);
     }
@@ -54,6 +59,7 @@ public class GenerateResultStepTests
 
         public Task<AnalysisResult> AnalyzeAsync(
             string goal,
+            string documentText,
             CancellationToken cancellationToken = default)
         {
             ReceivedToken = cancellationToken;

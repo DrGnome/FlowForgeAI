@@ -33,7 +33,8 @@ public sealed class OllamaAiServiceTests
         var service = CreateService(client);
 
         var result = await service.AnalyzeAsync(
-            "Explain AI workflows");
+            "Explain AI workflows",
+            "AI workflows can automate repeatable tasks.");
 
         Assert.Equal(
             "AI workflows automate repeatable tasks.",
@@ -58,7 +59,9 @@ public sealed class OllamaAiServiceTests
         var service = CreateService(client);
 
         await Assert.ThrowsAsync<HttpRequestException>(
-            () => service.AnalyzeAsync("Analyse a document"));
+            () => service.AnalyzeAsync(
+                "Analyse a document",
+                "Document contents"));
     }
 
     [Fact]
@@ -71,7 +74,9 @@ public sealed class OllamaAiServiceTests
 
         var exception =
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.AnalyzeAsync("Analyse a document"));
+                () => service.AnalyzeAsync(
+                    "Analyse a document",
+                    "Document contents"));
 
         Assert.Contains("invalid analysis JSON", exception.Message);
         Assert.IsType<JsonException>(exception.InnerException);
@@ -95,7 +100,9 @@ public sealed class OllamaAiServiceTests
 
         var exception =
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.AnalyzeAsync("Analyse a document"));
+                () => service.AnalyzeAsync(
+                    "Analyse a document",
+                    "Document contents"));
 
         Assert.Contains("incomplete analysis", exception.Message);
     }
@@ -110,9 +117,11 @@ public sealed class OllamaAiServiceTests
 
         var exception =
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => service.AnalyzeAsync("Analyse a document"));
+                () => service.AnalyzeAsync(
+                    "Analyse a document",
+                    "Document contents"));
 
-        Assert.Contains("empty response", exception.Message);
+        Assert.Contains("empty message", exception.Message);
     }
 
     private static OllamaAiService CreateService(
@@ -147,16 +156,10 @@ public sealed class OllamaAiServiceTests
     {
         return JsonSerializer.Serialize(new
         {
-            choices = new[]
+            message = new
             {
-                new
-                {
-                    message = new
-                    {
-                        role = "assistant",
-                        content
-                    }
-                }
+                role = "assistant",
+                content
             }
         });
     }

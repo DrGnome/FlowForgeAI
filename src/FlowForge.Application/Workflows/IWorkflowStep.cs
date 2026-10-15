@@ -1,4 +1,3 @@
-
 namespace FlowForge.Application.Workflows;
 
 public interface IWorkflowStep
@@ -6,6 +5,6 @@ public interface IWorkflowStep
     string Name { get; }
 
     Task<string> ExecuteAsync(
-        string goal,
+        WorkflowInput input,
         CancellationToken cancellationToken = default);
 }

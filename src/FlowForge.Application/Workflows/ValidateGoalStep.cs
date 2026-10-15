@@ -6,16 +6,16 @@ public sealed class ValidateGoalStep : IWorkflowStep
     public string Name => "Validate goal";
 
     public Task<string> ExecuteAsync(
-        string goal,
+        WorkflowInput input,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(goal))
+        if (string.IsNullOrWhiteSpace(input.Goal))
         {
             throw new ArgumentException(
                 "A workflow goal is required.",
-                nameof(goal));
+                nameof(input));
         }
 
         return Task.FromResult("The workflow goal is valid.");

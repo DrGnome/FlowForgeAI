@@ -6,5 +6,6 @@ public interface IAiService
 {
     Task<AnalysisResult> AnalyzeAsync(
         string goal,
+        string documentText,
         CancellationToken cancellationToken = default);
 }

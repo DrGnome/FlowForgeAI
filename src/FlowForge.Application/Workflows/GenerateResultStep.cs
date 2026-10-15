@@ -14,11 +14,12 @@ public sealed class GenerateResultStep : IWorkflowStep
     public string Name => "Generate result";
 
     public async Task<string> ExecuteAsync(
-        string goal,
+        WorkflowInput input,
         CancellationToken cancellationToken = default)
     {
         var result = await _aiService.AnalyzeAsync(
-            goal,
+            input.Goal,
+            input.DocumentText,
             cancellationToken);
 
         return System.Text.Json.JsonSerializer.Serialize(result);

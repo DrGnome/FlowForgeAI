@@ -14,7 +14,7 @@ public sealed class WorkflowRunner
     }
 
     public async Task<WorkflowRun> RunAsync(
-        string goal,
+        WorkflowInput input,
         CancellationToken cancellationToken = default)
     {
         var startedAt = DateTimeOffset.UtcNow;
@@ -32,7 +32,7 @@ public sealed class WorkflowRunner
             try
             {
                 var output = await step.ExecuteAsync(
-                    goal,
+                    input,
                     cancellationToken);
 
                 results.Add(new WorkflowStepResult(
@@ -68,7 +68,7 @@ public sealed class WorkflowRunner
 
         return new WorkflowRun(
             Guid.NewGuid(),
-            goal,
+            input.Goal,
             status,
             startedAt,
             DateTimeOffset.UtcNow,

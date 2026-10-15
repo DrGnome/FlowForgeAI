@@ -18,7 +18,8 @@ public class WorkflowFailureTests
 
         var runner = new WorkflowRunner(steps);
 
-        var result = await runner.RunAsync("Test workflow");
+        var result = await runner.RunAsync(
+            new WorkflowInput("Test workflow", "Test document"));
 
         Assert.Equal("Failed", result.Status);
         Assert.Equal(2, result.Steps.Count);
@@ -35,7 +36,8 @@ public class WorkflowFailureTests
                 new ValidateGoalStep()
             });
 
-        var result = await runner.RunAsync(" ");
+        var result = await runner.RunAsync(
+            new WorkflowInput(" ", "Test document"));
 
         Assert.Equal("Failed", result.Status);
         Assert.Single(result.Steps);
@@ -47,7 +49,7 @@ public class WorkflowFailureTests
         public string Name => "Successful step";
 
         public Task<string> ExecuteAsync(
-            string goal,
+            WorkflowInput input,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult("OK");
@@ -59,7 +61,7 @@ public class WorkflowFailureTests
         public string Name => "Failing step";
 
         public Task<string> ExecuteAsync(
-            string goal,
+            WorkflowInput input,
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("Simulated failure");
