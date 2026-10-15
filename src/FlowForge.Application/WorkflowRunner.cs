@@ -1,16 +1,21 @@
-using System.Text.Json;
+using System.Diagnostics;
 using FlowForge.Application.Workflows;
 using FlowForge.Domain;
+using Microsoft.Extensions.Logging;
 
 namespace FlowForge.Application;
 
 public sealed class WorkflowRunner
 {
     private readonly IReadOnlyList<IWorkflowStep> _steps;
+    private readonly ILogger<WorkflowRunner> _logger;
 
-    public WorkflowRunner(IEnumerable<IWorkflowStep> steps)
+    public WorkflowRunner(
+        IEnumerable<IWorkflowStep> steps,
+        ILogger<WorkflowRunner> logger)
     {
         _steps = steps.ToArray();
+        _logger = logger;
     }
 
     public async Task<WorkflowRunResponse> RunAsync(
@@ -19,45 +24,59 @@ public sealed class WorkflowRunner
     {
         var id = Guid.NewGuid();
         var startedAt = DateTimeOffset.UtcNow;
+        var stopwatch = Stopwatch.StartNew();
         var results = new List<WorkflowStepResult>();
         var status = "Succeeded";
         AnalysisResult? analysis = null;
+
+        _logger.LogInformation(
+            "Workflow {WorkflowId} started. Goal length: {GoalLength}.",
+            id,
+            input.Goal.Length);
 
         foreach (var step in _steps)
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 status = "Cancelled";
+
+                _logger.LogWarning(
+                    "Workflow {WorkflowId} cancelled before step {StepName}.",
+                    id,
+                    step.Name);
+
                 break;
             }
 
+            var stepStartedAt = Stopwatch.StartNew();
+
+            _logger.LogInformation(
+                "Workflow {WorkflowId}: step {StepName} started.",
+                id,
+                step.Name);
+
             try
             {
-                var output = await step.ExecuteAsync(
+                var stepOutput = await step.ExecuteAsync(
                     input,
                     cancellationToken);
 
-                if (step.Name == "Generate result")
+                if (stepOutput.Analysis is not null)
                 {
-                    analysis = JsonSerializer.Deserialize<AnalysisResult>(
-                        output,
-                        new JsonSerializerOptions
-                        {
-                            PropertyNameCaseInsensitive = true
-                        });
-
-                    if (analysis is null)
-                    {
-                        throw new InvalidOperationException(
-                            "The generated analysis was empty.");
-                    }
+                    analysis = stepOutput.Analysis;
                 }
 
                 results.Add(new WorkflowStepResult(
                     step.Name,
                     "Succeeded",
-                    output,
+                    stepOutput.Output,
                     DateTimeOffset.UtcNow));
+
+                _logger.LogInformation(
+                    "Workflow {WorkflowId}: step {StepName} succeeded in {ElapsedMilliseconds} ms.",
+                    id,
+                    step.Name,
+                    stepStartedAt.ElapsedMilliseconds);
             }
             catch (OperationCanceledException)
                 when (cancellationToken.IsCancellationRequested)
@@ -69,9 +88,15 @@ public sealed class WorkflowRunner
                     DateTimeOffset.UtcNow));
 
                 status = "Cancelled";
+
+                _logger.LogWarning(
+                    "Workflow {WorkflowId}: step {StepName} was cancelled.",
+                    id,
+                    step.Name);
+
                 break;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
                 results.Add(new WorkflowStepResult(
                     step.Name,
@@ -80,11 +105,21 @@ public sealed class WorkflowRunner
                     DateTimeOffset.UtcNow));
 
                 status = "Failed";
+
+                _logger.LogError(
+                    exception,
+                    "Workflow {WorkflowId}: step {StepName} failed after {ElapsedMilliseconds} ms.",
+                    id,
+                    step.Name,
+                    stepStartedAt.ElapsedMilliseconds);
+
                 break;
             }
         }
 
-        return new WorkflowRunResponse(
+        stopwatch.Stop();
+
+        var response = new WorkflowRunResponse(
             id,
             input.Goal,
             status,
@@ -92,5 +127,23 @@ public sealed class WorkflowRunner
             DateTimeOffset.UtcNow,
             analysis,
             results);
+
+        if (status == "Succeeded")
+        {
+            _logger.LogInformation(
+                "Workflow {WorkflowId} completed successfully in {ElapsedMilliseconds} ms.",
+                id,
+                stopwatch.ElapsedMilliseconds);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Workflow {WorkflowId} finished with status {WorkflowStatus} in {ElapsedMilliseconds} ms.",
+                id,
+                status,
+                stopwatch.ElapsedMilliseconds);
+        }
+
+        return response;
     }
 }

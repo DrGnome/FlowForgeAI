@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FlowForge.Application.AI;
 using FlowForge.Application.Workflows;
 using FlowForge.Domain;
@@ -8,7 +7,7 @@ namespace FlowForge.UnitTests;
 public class GenerateResultStepTests
 {
     [Fact]
-    public async Task ExecuteAsync_ReturnsSerializedAnalysis()
+    public async Task ExecuteAsync_ReturnsAnalysisInStepOutput()
     {
         var expected = new AnalysisResult(
             "A concise summary",
@@ -23,17 +22,13 @@ public class GenerateResultStepTests
                 "Analyse a document",
                 "Document contents"));
 
-        var actual = JsonSerializer.Deserialize<AnalysisResult>(
-            output,
-            new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+        Assert.Equal(
+            "Summary: A concise summary" + Environment.NewLine +
+            "Key findings: 1" + Environment.NewLine +
+            "Caveats: 1",
+            output.Output);
 
-        Assert.NotNull(actual);
-        Assert.Equal(expected.Summary, actual.Summary);
-        Assert.Equal(expected.KeyFindings, actual.KeyFindings);
-        Assert.Equal(expected.Caveats, actual.Caveats);
+        Assert.Equal(expected, output.Analysis);
     }
 
     [Fact]

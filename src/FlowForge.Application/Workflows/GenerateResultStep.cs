@@ -13,15 +13,20 @@ public sealed class GenerateResultStep : IWorkflowStep
 
     public string Name => "Generate result";
 
-    public async Task<string> ExecuteAsync(
+    public async Task<WorkflowStepOutput> ExecuteAsync(
         WorkflowInput input,
         CancellationToken cancellationToken = default)
     {
-        var result = await _aiService.AnalyzeAsync(
+        var analysis = await _aiService.AnalyzeAsync(
             input.Goal,
             input.DocumentText,
             cancellationToken);
 
-        return System.Text.Json.JsonSerializer.Serialize(result);
+        var output =
+            $"Summary: {analysis.Summary}{Environment.NewLine}" +
+            $"Key findings: {analysis.KeyFindings.Count}{Environment.NewLine}" +
+            $"Caveats: {analysis.Caveats.Count}";
+
+        return new WorkflowStepOutput(output, analysis);
     }
 }

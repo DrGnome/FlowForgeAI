@@ -13,6 +13,7 @@ builder.Services
         builder.Configuration.GetSection("Ai"));
 
 builder.Services.AddHttpClient<IAiService, OllamaAiService>();
+builder.Services.AddHttpClient<IAiHealthCheck, OllamaHealthCheck>();
 
 builder.Services.AddTransient<IWorkflowStep, ValidateGoalStep>();
 builder.Services.AddTransient<IWorkflowStep, PrepareAnalysisStep>();
@@ -76,6 +77,26 @@ app.MapPost("/workflows/run", async (
     }
 
     return Results.Ok(result);
+});
+
+app.MapGet("/health", async (
+    IAiHealthCheck aiHealthCheck,
+    CancellationToken cancellationToken) =>
+{
+    var aiAvailable = await aiHealthCheck.IsAvailableAsync(
+        cancellationToken);
+
+    var response = new
+    {
+        status = aiAvailable ? "Healthy" : "Degraded",
+        api = "Healthy",
+        aiProvider = aiAvailable ? "Available" : "Unavailable",
+        timestamp = DateTimeOffset.UtcNow
+    };
+
+    return aiAvailable
+        ? Results.Ok(response)
+        : Results.Json(response, statusCode: 503);
 });
 
 app.Run();

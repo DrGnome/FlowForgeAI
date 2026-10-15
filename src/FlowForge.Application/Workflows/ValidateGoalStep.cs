@@ -5,9 +5,9 @@ public sealed class ValidateGoalStep : IWorkflowStep
 {
     public string Name => "Validate goal";
 
-    public Task<string> ExecuteAsync(
-        WorkflowInput input,
-        CancellationToken cancellationToken = default)
+public async Task<WorkflowStepOutput> ExecuteAsync(
+    WorkflowInput input,
+    CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -18,6 +18,6 @@ public sealed class ValidateGoalStep : IWorkflowStep
                 nameof(input));
         }
 
-        return Task.FromResult("The workflow goal is valid.");
+        return new WorkflowStepOutput("Goal validation succeeded.");
     }
 }

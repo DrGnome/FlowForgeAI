@@ -5,13 +5,13 @@ public sealed class PrepareAnalysisStep : IWorkflowStep
 {
     public string Name => "Prepare analysis";
 
-    public Task<string> ExecuteAsync(
+    public Task<WorkflowStepOutput> ExecuteAsync(
         WorkflowInput input,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult(
-            $"Prepared the goal for processing: {input.Goal}");
+        return Task.FromResult(new WorkflowStepOutput(
+            $"Prepared the goal for processing: {input.Goal}"));
     }
 }

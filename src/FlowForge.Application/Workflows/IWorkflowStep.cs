@@ -4,7 +4,7 @@ public interface IWorkflowStep
 {
     string Name { get; }
 
-    Task<string> ExecuteAsync(
+    Task<WorkflowStepOutput> ExecuteAsync(
         WorkflowInput input,
         CancellationToken cancellationToken = default);
 }

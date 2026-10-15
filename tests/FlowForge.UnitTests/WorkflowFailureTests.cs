@@ -1,6 +1,7 @@
 
 using FlowForge.Application;
 using FlowForge.Application.Workflows;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.UnitTests;
 
@@ -16,7 +17,9 @@ public class WorkflowFailureTests
             new SuccessfulStep()
         };
 
-        var runner = new WorkflowRunner(steps);
+        var runner = new WorkflowRunner(
+            steps,
+            NullLogger<WorkflowRunner>.Instance);
 
         var result = await runner.RunAsync(
             new WorkflowInput("Test workflow", "Test document"));
@@ -34,7 +37,8 @@ public class WorkflowFailureTests
             new IWorkflowStep[]
             {
                 new ValidateGoalStep()
-            });
+            },
+            NullLogger<WorkflowRunner>.Instance);
 
         var result = await runner.RunAsync(
             new WorkflowInput(" ", "Test document"));
@@ -48,11 +52,11 @@ public class WorkflowFailureTests
     {
         public string Name => "Successful step";
 
-        public Task<string> ExecuteAsync(
+        public Task<WorkflowStepOutput> ExecuteAsync(
             WorkflowInput input,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult("OK");
+            return Task.FromResult(new WorkflowStepOutput("OK"));
         }
     }
 
@@ -60,7 +64,7 @@ public class WorkflowFailureTests
     {
         public string Name => "Failing step";
 
-        public Task<string> ExecuteAsync(
+        public Task<WorkflowStepOutput> ExecuteAsync(
             WorkflowInput input,
             CancellationToken cancellationToken = default)
         {
