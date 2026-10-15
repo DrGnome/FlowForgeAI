@@ -1,4 +1,3 @@
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using FlowForge.Infrastructure;
@@ -34,30 +33,38 @@ app.MapPost("/workflows/run", async (
     WorkflowRunner runner,
     CancellationToken cancellationToken) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Goal))
+    if (string.IsNullOrWhiteSpace(request.Goal) ||
+        request.Goal.Length > 4000)
     {
         return Results.ValidationProblem(
             new Dictionary<string, string[]>
             {
-                ["goal"] = ["A non-empty goal is required."]
+                ["goal"] =
+                [
+                    "The goal must contain between 1 and 4000 characters."
+                ]
             });
     }
 
-    if (string.IsNullOrWhiteSpace(request.Goal) ||
-    request.Goal.Length > 4000)
-{
-    return Results.ValidationProblem(
-        new Dictionary<string, string[]>
-        {
-            ["goal"] =
-            [
-                "The goal must contain between 1 and 4000 characters."
-            ]
-        });
-}
+    if (string.IsNullOrWhiteSpace(request.DocumentText) ||
+        request.DocumentText.Length > 20000)
+    {
+        return Results.ValidationProblem(
+            new Dictionary<string, string[]>
+            {
+                ["documentText"] =
+                [
+                    "Document text is required and must contain no more than 20000 characters."
+                ]
+            });
+    }
+
+    var input = new WorkflowInput(
+        request.Goal,
+        request.DocumentText);
 
     var result = await runner.RunAsync(
-        new WorkflowInput(request.Goal, request.DocumentText),
+        input,
         cancellationToken);
 
     if (result.Status == "Failed")
