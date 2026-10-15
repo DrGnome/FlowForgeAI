@@ -29,28 +29,50 @@ app.MapGet("/", () => Results.Ok(new
     status = "Running"
 }));
 
-app.MapPost(
-    "/workflows/run",
-    async (
-        RunWorkflowRequest request,
-        WorkflowRunner runner,
-        CancellationToken cancellationToken) =>
+app.MapPost("/workflows/run", async (
+    RunWorkflowRequest request,
+    WorkflowRunner runner,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(request.Goal))
     {
-        if (string.IsNullOrWhiteSpace(request.Goal))
-        {
-            return Results.BadRequest(new
+        return Results.ValidationProblem(
+            new Dictionary<string, string[]>
             {
-                error = "A workflow goal is required."
+                ["goal"] = ["A non-empty goal is required."]
             });
-        }
+    }
 
-        var result = await runner.RunAsync(
-            request.Goal,
-            cancellationToken);
+    if (string.IsNullOrWhiteSpace(request.Goal) ||
+    request.Goal.Length > 4000)
+{
+    return Results.ValidationProblem(
+        new Dictionary<string, string[]>
+        {
+            ["goal"] =
+            [
+                "The goal must contain between 1 and 4000 characters."
+            ]
+        });
+}
 
-        return Results.Ok(result);
-    });
+    var result = await runner.RunAsync(
+        request.Goal,
+        cancellationToken);
+
+    if (result.Status == "Failed")
+    {
+        return Results.Problem(
+            title: "Workflow execution failed",
+            detail: "The workflow could not be completed.",
+            statusCode: StatusCodes.Status502BadGateway);
+    }
+
+    return Results.Ok(result);
+});
 
 app.Run();
 
 public sealed record RunWorkflowRequest(string Goal);
+
+public partial class Program { }
