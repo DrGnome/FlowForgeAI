@@ -2,6 +2,7 @@ using System.Diagnostics;
 using FlowForge.Application.Workflows;
 using FlowForge.Domain;
 using Microsoft.Extensions.Logging;
+using FlowForge.Application.WorkflowHistory;
 
 namespace FlowForge.Application;
 
@@ -9,13 +10,16 @@ public sealed class WorkflowRunner
 {
     private readonly IReadOnlyList<IWorkflowStep> _steps;
     private readonly ILogger<WorkflowRunner> _logger;
+    private readonly IWorkflowRunRepository _workflowRunRepository;
 
     public WorkflowRunner(
         IEnumerable<IWorkflowStep> steps,
-        ILogger<WorkflowRunner> logger)
+        ILogger<WorkflowRunner> logger,
+        IWorkflowRunRepository workflowRunRepository)
     {
         _steps = steps.ToArray();
         _logger = logger;
+        _workflowRunRepository = workflowRunRepository;
     }
 
     public async Task<WorkflowRunResponse> RunAsync(
@@ -128,6 +132,11 @@ public sealed class WorkflowRunner
             analysis,
             results);
 
+        var persistenceToken = status == "Cancelled"
+            ? CancellationToken.None
+            : cancellationToken;
+
+        await _workflowRunRepository.SaveAsync(response, persistenceToken);
         if (status == "Succeeded")
         {
             _logger.LogInformation(

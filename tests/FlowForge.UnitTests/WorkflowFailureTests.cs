@@ -1,6 +1,7 @@
 
 using FlowForge.Application;
 using FlowForge.Application.Workflows;
+using FlowForge.Infrastructure.WorkflowHistory;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FlowForge.UnitTests;
@@ -19,7 +20,8 @@ public class WorkflowFailureTests
 
         var runner = new WorkflowRunner(
             steps,
-            NullLogger<WorkflowRunner>.Instance);
+            NullLogger<WorkflowRunner>.Instance,
+            new InMemoryWorkflowRunRepository());
 
         var result = await runner.RunAsync(
             new WorkflowInput("Test workflow", "Test document"));
@@ -38,7 +40,8 @@ public class WorkflowFailureTests
             {
                 new ValidateGoalStep()
             },
-            NullLogger<WorkflowRunner>.Instance);
+            NullLogger<WorkflowRunner>.Instance,
+            new InMemoryWorkflowRunRepository());
 
         var result = await runner.RunAsync(
             new WorkflowInput(" ", "Test document"));

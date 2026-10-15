@@ -108,6 +108,37 @@ public sealed class OllamaAiServiceTests
     }
 
     [Fact]
+public async Task AnalyzeAsync_CallerCancelsRequest_ThrowsOperationCanceledException()
+{
+    using var client = CreateClient(
+        CreateChatResponse("""{"summary":"Test","keyFindings":[],"caveats":[]}"""));
+
+    var service = CreateService(client);
+    using var cancellation = new CancellationTokenSource();
+    await cancellation.CancelAsync();
+
+    await Assert.ThrowsAnyAsync<OperationCanceledException>(
+        () => service.AnalyzeAsync(
+            "Analyse a document",
+            "Document contents",
+            cancellation.Token));
+}
+
+[Fact]
+public async Task AnalyzeAsync_EmptyGoal_ThrowsArgumentException()
+{
+    using var client = CreateClient(
+        CreateChatResponse("""{"summary":"Test","keyFindings":[],"caveats":[]}"""));
+
+    var service = CreateService(client);
+
+    await Assert.ThrowsAsync<ArgumentException>(
+        () => service.AnalyzeAsync(
+            " ",
+            "Document contents"));
+}
+
+    [Fact]
     public async Task AnalyzeAsync_EmptyResponse_ThrowsInvalidOperationException()
     {
         using var client = CreateClient(
@@ -129,7 +160,7 @@ public sealed class OllamaAiServiceTests
     {
         var options = Options.Create(new AiOptions
         {
-            BaseUrl = "http://localhost:11434/v1/",
+            BaseUrl = "http://localhost:11434/",
             Model = "llama3.2"
         });
 

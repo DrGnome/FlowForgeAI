@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -57,60 +58,115 @@ public sealed class OllamaAiService : IAiService
             false,
             "json");
 
-        using var response = await _httpClient.PostAsJsonAsync(
-            "api/chat",
-            request,
-            cancellationToken);
-
-        response.EnsureSuccessStatusCode();
-
-        var chatResponse = await response.Content
-            .ReadFromJsonAsync<OllamaChatResponse>(
-                cancellationToken: cancellationToken);
-
-        var content = chatResponse?.Message?.Content;
-
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new InvalidOperationException(
-                "Ollama returned an empty message from its native chat API.");
-        }
-
-        AnalysisResult? result;
+        HttpResponseMessage response;
 
         try
         {
-            result = JsonSerializer.Deserialize<AnalysisResult>(
-                content,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+            response = await _httpClient.PostAsJsonAsync(
+                "api/chat",
+                request,
+                cancellationToken);
         }
-        catch (JsonException exception)
+        catch (HttpRequestException exception)
         {
             throw new InvalidOperationException(
-                "Ollama returned invalid analysis JSON.",
+                "Unable to connect to Ollama. Check that Ollama is running.",
+                exception);
+        }
+        catch (TaskCanceledException exception)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                "The Ollama request timed out.",
                 exception);
         }
 
-        if (result is null ||
-            string.IsNullOrWhiteSpace(result.Summary) ||
-            result.KeyFindings is null ||
-            result.Caveats is null ||
-            result.KeyFindings.Any(string.IsNullOrWhiteSpace) ||
-            result.Caveats.Any(string.IsNullOrWhiteSpace))
+        using (response)
         {
-            throw new InvalidOperationException(
-                "Ollama returned incomplete analysis data.");
-        }
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(
+                    cancellationToken);
 
-        return result;
+                if (response.StatusCode == HttpStatusCode.NotFound ||
+                    (errorBody.Contains(
+                         "model",
+                         StringComparison.OrdinalIgnoreCase) &&
+                     errorBody.Contains(
+                         "not found",
+                         StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new InvalidOperationException(
+                        $"The configured Ollama model '{_options.Model}' " +
+                        "was not found. Pull the model with 'ollama pull " +
+                        _options.Model + "'.");
+                }
+
+                throw new HttpRequestException(
+                    $"Ollama returned HTTP {(int)response.StatusCode} " +
+                    $"({response.StatusCode}).");
+            }
+
+            OllamaChatResponse? chatResponse;
+
+            try
+            {
+                chatResponse = await response.Content
+                    .ReadFromJsonAsync<OllamaChatResponse>(
+                        cancellationToken: cancellationToken);
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException(
+                    "Ollama returned an invalid chat response.",
+                    exception);
+            }
+
+            var content = chatResponse?.Message?.Content;
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                throw new InvalidOperationException(
+                    "Ollama returned an empty message.");
+            }
+
+            AnalysisResult? result;
+
+            try
+            {
+                result = JsonSerializer.Deserialize<AnalysisResult>(
+                    content,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidOperationException(
+                    "Ollama returned invalid analysis JSON.",
+                    exception);
+            }
+
+            if (result is null ||
+                string.IsNullOrWhiteSpace(result.Summary) ||
+                result.KeyFindings is null ||
+                result.Caveats is null ||
+                result.KeyFindings.Any(string.IsNullOrWhiteSpace) ||
+                result.Caveats.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidOperationException(
+                    "Ollama returned incomplete analysis data.");
+            }
+
+            return result;
+        }
     }
 
     private sealed record OllamaChatRequest(
         [property: JsonPropertyName("model")] string Model,
-        [property: JsonPropertyName("messages")] IReadOnlyList<ChatMessage> Messages,
+        [property: JsonPropertyName("messages")]
+        IReadOnlyList<ChatMessage> Messages,
         [property: JsonPropertyName("stream")] bool Stream,
         [property: JsonPropertyName("format")] string Format);
 
